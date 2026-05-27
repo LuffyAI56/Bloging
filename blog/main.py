@@ -3,8 +3,12 @@ Main application entry point for the Blog API.
 Initializes FastAPI, sets up CORS, database migrations, and routers.
 """
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import migrations, models
@@ -46,3 +50,12 @@ migrations.run_startup_migrations(engine)
 app.include_router(blog.router)
 app.include_router(user.router)
 app.include_router(authentication.router)
+
+frontend_dir = Path(__file__).resolve().parents[1] / "frontend"
+if frontend_dir.exists():
+    app.mount("/frontend", StaticFiles(directory=frontend_dir), name="frontend")
+
+
+    @app.get("/", include_in_schema=False)
+    def read_frontend():
+        return FileResponse(frontend_dir / "index.html")
