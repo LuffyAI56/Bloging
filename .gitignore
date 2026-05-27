@@ -2,5 +2,6 @@ blog-env/
 __pycache__/
 *.pyc
 .env
+blog.db
 .vscode/
 .idea/

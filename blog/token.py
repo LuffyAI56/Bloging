@@ -1,29 +1,64 @@
+"""
+JWT generation and verification module.
+"""
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 from typing import Optional
 from jose import JWTError, jwt
 
-SECRET_KEY = "9f3c8a7e4b1d2c6f8e0a9b5d7c3f1e6a2b4c8d9e0f1a2b3c4d5e6f7a8b9c0d1"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15
+from .config import get_settings
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """
+    Creates a JWT access token for authentication.
+    """
+    settings = get_settings()
     to_encode = data.copy()
+    
+    # Set expiration time
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
+        
+    to_encode.update({"exp": expire, "type": "access"})
+    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
-def verify_token(token: str):
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """
+    Creates a JWT refresh token for obtaining new access tokens.
+    Returns the encoded token, its unique JTI (JWT ID), and the expiration date.
+    """
+    settings = get_settings()
+    to_encode = data.copy()
+    
+    # Set expiration time
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
+        
+    jti = str(uuid4())
+    to_encode.update({"exp": expire, "type": "refresh", "jti": jti})
+    encoded_token = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+    
+    return encoded_token, jti, expire
+
+
+def verify_token(token: str, token_type: str = "access"):
+    """
+    Verifies a JWT token and ensures its type matches the expected type.
+    Returns the decoded payload if valid, None otherwise.
+    """
+    settings = get_settings()
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise JWTError("Invalid token")
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        if payload.get("sub") is None:
+            raise JWTError("Invalid token: Subject missing")
+        if payload.get("type") != token_type:
+            raise JWTError(f"Invalid token type: Expected {token_type}")
         return payload
     except JWTError:
         return None

@@ -1,7 +1,9 @@
 bcrypt==3.2.2
-uvicorn
+uvicorn[standard]
 fastapi
 sqlalchemy
 passlib
 python-jose[cryptography]
 python-multipart
+pytest
+httpx
