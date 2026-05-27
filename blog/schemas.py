@@ -158,11 +158,25 @@ class BlogResponse(BaseModel):
     is_published: bool
     view_count: int
     share_count: int
+    likes_count: int = 0
+    bookmarks_count: int = 0
+    comments_count: int = 0
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     creator: PublicUserResponse
     category: Optional[CategoryResponse] = None
     tags: List[TagResponse] = Field(default_factory=list)
+
+
+class SuggestedAuthorResponse(BaseModel):
+    user: PublicUserResponse
+    followers_count: int = 0
+    posts_count: int = 0
+    is_following: bool = False
+
+
+class TrendingTagResponse(TagResponse):
+    post_count: int = 0
 
 
 class CommentRequest(BaseModel):

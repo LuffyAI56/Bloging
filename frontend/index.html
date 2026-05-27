@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Synapse Blog</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/frontend/styles.css?v=5" />
+  </head>
+  <body class="auth-locked">
+    <main class="auth-screen" id="auth-screen">
+      <section class="auth-hero">
+        <a class="brand auth-brand" href="/" aria-label="Synapse home">
+          <span class="brand-mark">S</span>
+          <span>
+            <strong>Synapse</strong>
+            <small>social blogs</small>
+          </span>
+        </a>
+        <div>
+          <p class="auth-kicker">Private social blogging</p>
+          <h1>Login or create an account to enter the feed.</h1>
+          <p class="auth-copy">
+            Read posts, follow writers, save ideas, comment, and publish only after signing in.
+          </p>
+        </div>
+        <button class="primary-action auth-demo" id="auth-demo-login">
+          <i data-lucide="sparkles"></i>
+          <span>Continue as Demo Author</span>
+        </button>
+      </section>
+
+      <section class="auth-cards" aria-label="Authentication">
+        <article class="auth-card">
+          <h2>Login</h2>
+          <form id="auth-login-form">
+            <label>
+              <span>Email</span>
+              <input type="email" id="auth-login-email" value="seed_author_0001@example.com" required />
+            </label>
+            <label>
+              <span>Password</span>
+              <input type="password" id="auth-login-password" value="SeedPass123" required />
+            </label>
+            <button class="primary-action full" type="submit">
+              <i data-lucide="log-in"></i>
+              <span>Login</span>
+            </button>
+          </form>
+        </article>
+
+        <article class="auth-card">
+          <h2>Create Account</h2>
+          <form id="auth-register-form">
+            <label>
+              <span>Name</span>
+              <input type="text" id="register-name" required />
+            </label>
+            <label>
+              <span>Email</span>
+              <input type="email" id="register-email" required />
+            </label>
+            <label>
+              <span>Password</span>
+              <input type="password" id="register-password" minlength="8" required />
+            </label>
+            <button class="ghost-action full" type="submit">
+              <i data-lucide="user-plus"></i>
+              <span>Create Account</span>
+            </button>
+          </form>
+        </article>
+      </section>
+    </main>
+
+    <div class="app-shell">
+      <aside class="left-rail" aria-label="Primary navigation">
+        <a class="brand" href="/" aria-label="Synapse home">
+          <span class="brand-mark">S</span>
+          <span>
+            <strong>Synapse</strong>
+            <small>social blogs</small>
+          </span>
+        </a>
+
+        <nav class="nav-list">
+          <button class="nav-item active" data-feed-mode="hot">
+            <i data-lucide="home"></i>
+            <span>Home</span>
+          </button>
+          <button class="nav-item" data-feed-mode="visual">
+            <i data-lucide="compass"></i>
+            <span>Explore</span>
+          </button>
+          <button class="nav-item" id="open-create">
+            <i data-lucide="square-pen"></i>
+            <span>Create</span>
+          </button>
+          <button class="nav-item" id="load-bookmarks">
+            <i data-lucide="bookmark"></i>
+            <span>Saved</span>
+          </button>
+          <button class="nav-item" id="focus-login">
+            <i data-lucide="user-round"></i>
+            <span>Profile</span>
+          </button>
+        </nav>
+
+        <section class="node-list" aria-labelledby="nodes-title">
+          <h2 id="nodes-title">Your Nodes</h2>
+          <button class="node active" data-topic="all">
+            <span class="node-dot teal"></span>
+            <span>s/all</span>
+            <small>live</small>
+          </button>
+          <button class="node" data-topic="ai">
+            <span class="node-dot violet"></span>
+            <span>s/ai</span>
+            <small>hot</small>
+          </button>
+          <button class="node" data-topic="backend">
+            <span class="node-dot amber"></span>
+            <span>s/backend</span>
+            <small>new</small>
+          </button>
+          <button class="node" data-topic="design">
+            <span class="node-dot rose"></span>
+            <span>s/design</span>
+            <small>now</small>
+          </button>
+        </section>
+
+        <div class="rail-account" id="rail-account">
+          <img src="https://api.dicebear.com/7.x/initials/svg?seed=Guest" alt="" />
+          <span>
+            <strong>Guest</strong>
+            <small>Explore mode</small>
+          </span>
+        </div>
+      </aside>
+
+      <main class="main-feed">
+        <header class="top-bar">
+          <div class="search-wrap">
+            <i data-lucide="search"></i>
+            <input id="search-input" type="search" placeholder="Search posts, tags, authors" />
+          </div>
+          <div class="top-actions">
+            <button class="icon-button" id="refresh-feed" title="Refresh feed" aria-label="Refresh feed">
+              <i data-lucide="refresh-cw"></i>
+            </button>
+            <button class="danger-action" id="top-logout">
+              <i data-lucide="log-out"></i>
+              <span>Logout</span>
+            </button>
+          </div>
+        </header>
+
+        <section class="story-strip" aria-labelledby="stories-title">
+          <div class="section-heading">
+            <h1 id="stories-title">Featured Writers</h1>
+            <span id="feed-status">Hot feed</span>
+          </div>
+          <div class="stories" id="stories"></div>
+        </section>
+
+        <section class="feed-controls" aria-label="Feed filters">
+          <div class="segmented-control">
+            <button class="segment active" data-mode="hot">For You</button>
+            <button class="segment" data-mode="following">Following</button>
+            <button class="segment" data-mode="latest">Latest</button>
+            <button class="segment" data-mode="visual">Visual Grid</button>
+          </div>
+          <button class="ghost-action" id="open-create-inline">
+            <i data-lucide="plus"></i>
+            <span>New Post</span>
+          </button>
+        </section>
+
+        <section class="feed-list" id="feed-list" aria-live="polite"></section>
+      </main>
+
+      <aside class="right-panel" aria-label="Discovery">
+        <section class="theme-panel" id="theme-panel">
+          <div class="panel-heading">
+            <h2>Color Palette</h2>
+          </div>
+          <div class="theme-list">
+            <button class="theme-btn active" data-theme="violet" style="--btn-accent: var(--violet);">
+              <span class="theme-dot" style="background: var(--violet);"></span>
+              <span>Violet</span>
+            </button>
+            <button class="theme-btn" data-theme="teal" style="--btn-accent: #14b8a6;">
+              <span class="theme-dot" style="background: #14b8a6;"></span>
+              <span>Teal</span>
+            </button>
+            <button class="theme-btn" data-theme="amber" style="--btn-accent: var(--amber);">
+              <span class="theme-dot" style="background: var(--amber);"></span>
+              <span>Amber</span>
+            </button>
+            <button class="theme-btn" data-theme="rose" style="--btn-accent: var(--rose);">
+              <span class="theme-dot" style="background: var(--rose);"></span>
+              <span>Rose</span>
+            </button>
+            <button class="theme-btn" data-theme="indigo" style="--btn-accent: var(--indigo);">
+              <span class="theme-dot" style="background: var(--indigo);"></span>
+              <span>Indigo</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="trend-panel">
+          <div class="panel-heading">
+            <h2>What's Buzzing</h2>
+            <span id="trend-count"></span>
+          </div>
+          <div class="trend-list" id="trend-list"></div>
+        </section>
+
+        <section class="suggestion-panel">
+          <div class="panel-heading">
+            <h2>Recommended Bloggers</h2>
+          </div>
+          <div class="suggestion-list" id="suggestion-list"></div>
+        </section>
+
+        <section class="activity-panel">
+          <div class="panel-heading">
+            <h2>Live Activity</h2>
+          </div>
+          <div class="activity-list" id="activity-list"></div>
+        </section>
+      </aside>
+    </div>
+
+    <dialog class="post-dialog" id="post-dialog">
+      <article class="dialog-content">
+        <button class="icon-button close-dialog" data-close-dialog aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+        <div id="dialog-body"></div>
+      </article>
+    </dialog>
+
+    <dialog class="post-dialog" id="create-dialog">
+      <article class="dialog-content compact">
+        <button class="icon-button close-dialog" data-close-create aria-label="Close">
+          <i data-lucide="x"></i>
+        </button>
+        <h2>Create Post</h2>
+        <form id="create-form" class="create-form">
+          <label>
+            <span>Title</span>
+            <input id="create-title" name="title" required />
+          </label>
+          <label>
+            <span>Cover image URL</span>
+            <input id="create-cover" name="cover_image_url" placeholder="https://picsum.photos/seed/new/1200/630" />
+          </label>
+          <div class="form-grid">
+            <label>
+              <span>Category</span>
+              <input id="create-category" name="category" placeholder="Applied AI" />
+            </label>
+            <label>
+              <span>Tags</span>
+              <input id="create-tags" name="tags" placeholder="ai, fastapi, design" />
+            </label>
+          </div>
+          <label>
+            <span>Post</span>
+            <textarea id="create-content" name="content" rows="8" required></textarea>
+          </label>
+          <button class="primary-action full" type="submit">
+            <i data-lucide="send"></i>
+            <span>Publish</span>
+          </button>
+        </form>
+      </article>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="/frontend/app.js?v=5"></script>
+  </body>
+</html>

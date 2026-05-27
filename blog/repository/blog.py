@@ -2,15 +2,23 @@
 Data access layer for blogs.
 """
 
-from fastapi import HTTPException, status
-from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from sqlalchemy import desc, exists, func, or_
+from sqlalchemy.orm import Session, selectinload
 
 from .. import models, schemas
 from ..utils import unique_slug
 
-from sqlalchemy import or_
-from sqlalchemy.orm import selectinload
+
+def blog_feed_options():
+    return (
+        selectinload(models.Blog.tags),
+        selectinload(models.Blog.category),
+        selectinload(models.Blog.creator),
+        selectinload(models.Blog.likes),
+        selectinload(models.Blog.bookmarks),
+        selectinload(models.Blog.comments),
+    )
 
 def get_or_create_category(db: Session, name: str | None):
 
@@ -67,11 +75,7 @@ def get_all_blogs(
     """Handles get all blogs logic."""
 
     query = (
-        base_visible_query(db).options(
-            selectinload(models.Blog.tags),
-            selectinload(models.Blog.category),
-            selectinload(models.Blog.creator),
-        )
+        base_visible_query(db).options(*blog_feed_options())
     )
     if search:
         search = search.strip()
@@ -94,7 +98,7 @@ def get_all_blogs(
 
 def get_my_blogs(db: Session, user_id: int, skip: int = 0, limit: int = 20):
     """Handles get my blogs logic."""
-    return db.query(models.Blog).filter(
+    return db.query(models.Blog).options(*blog_feed_options()).filter(
         models.Blog.user_id == user_id
     ).order_by(models.Blog.created_at.desc()).offset(skip).limit(limit).all()
 
@@ -266,7 +270,7 @@ def toggle_bookmark(blog_id: int, db: Session, user_id: int):
 
 def get_bookmarked_blogs(db: Session, user_id: int):
     """Handles get bookmarked blogs logic."""
-    return db.query(models.Blog).join(models.Bookmark).filter(models.Bookmark.user_id == user_id).all()
+    return db.query(models.Blog).options(*blog_feed_options()).join(models.Bookmark).filter(models.Bookmark.user_id == user_id).all()
 
 
 def share_blog(blog_id: int, db: Session):
@@ -290,12 +294,136 @@ def report_blog(blog_id: int, request: schemas.ReportRequest, db: Session, user_
     db.commit()
     return schemas.InteractionResponse(message="Report submitted", active=True)
 
-from sqlalchemy import exists
-from sqlalchemy.orm import selectinload
+
+def get_discovery_feed(
+    db: Session,
+    current_user_id: int | None = None,
+    skip: int = 0,
+    limit: int = 20,
+    mode: str = "hot",
+):
+    """Returns a new-user friendly discovery feed with popular, recent, and visual posts."""
+    like_counts = (
+        db.query(models.Like.blog_id, func.count(models.Like.id).label("likes_count"))
+        .group_by(models.Like.blog_id)
+        .subquery()
+    )
+    bookmark_counts = (
+        db.query(models.Bookmark.blog_id, func.count(models.Bookmark.id).label("bookmarks_count"))
+        .group_by(models.Bookmark.blog_id)
+        .subquery()
+    )
+    comment_counts = (
+        db.query(models.Comment.blog_id, func.count(models.Comment.id).label("comments_count"))
+        .group_by(models.Comment.blog_id)
+        .subquery()
+    )
+
+    score = (
+        func.coalesce(models.Blog.view_count, 0) * 0.03
+        + func.coalesce(models.Blog.share_count, 0) * 2
+        + func.coalesce(like_counts.c.likes_count, 0) * 4
+        + func.coalesce(bookmark_counts.c.bookmarks_count, 0) * 3
+        + func.coalesce(comment_counts.c.comments_count, 0) * 2
+    )
+
+    query = (
+        base_visible_query(db)
+        .options(*blog_feed_options())
+        .outerjoin(like_counts, like_counts.c.blog_id == models.Blog.id)
+        .outerjoin(bookmark_counts, bookmark_counts.c.blog_id == models.Blog.id)
+        .outerjoin(comment_counts, comment_counts.c.blog_id == models.Blog.id)
+    )
+
+    if current_user_id:
+        query = query.filter(models.Blog.user_id != current_user_id)
+
+    if mode == "latest":
+        query = query.order_by(models.Blog.created_at.desc())
+    elif mode == "visual":
+        query = query.filter(models.Blog.cover_image_url.isnot(None)).order_by(desc(score), models.Blog.created_at.desc())
+    else:
+        query = query.order_by(desc(score), models.Blog.created_at.desc())
+
+    return query.offset(skip).limit(limit).all()
+
+
+def get_suggested_authors(db: Session, current_user_id: int | None = None, limit: int = 8):
+    """Returns authors worth following for onboarding and discovery sidebars."""
+    authors = db.query(models.User).filter(
+        models.User.is_active == True,
+        models.User.role.in_(["author", "admin"]),
+    ).all()
+    suggestions = []
+
+    for author in authors:
+        if current_user_id and author.id == current_user_id:
+            continue
+
+        posts_count = db.query(models.Blog).filter(
+            models.Blog.user_id == author.id,
+            models.Blog.is_public == True,
+            models.Blog.is_published == True,
+        ).count()
+        if posts_count == 0:
+            continue
+
+        followers_count = db.query(models.Follow).filter(models.Follow.following_id == author.id).count()
+        is_following = False
+        if current_user_id:
+            is_following = db.query(models.Follow).filter(
+                models.Follow.follower_id == current_user_id,
+                models.Follow.following_id == author.id,
+            ).first() is not None
+
+        suggestions.append(
+            {
+                "user": author,
+                "followers_count": followers_count,
+                "posts_count": posts_count,
+                "is_following": is_following,
+                "_score": followers_count * 4 + posts_count * 3,
+            }
+        )
+
+    suggestions.sort(key=lambda item: item["_score"], reverse=True)
+    return [
+        {key: value for key, value in suggestion.items() if key != "_score"}
+        for suggestion in suggestions[:limit]
+    ]
+
+
+def get_trending_tags(db: Session, limit: int = 12):
+    """Returns tags ranked by visible published post volume."""
+    post_count = func.count(models.Blog.id).label("post_count")
+    rows = (
+        db.query(models.Tag, post_count)
+        .join(models.blog_tags, models.blog_tags.c.tag_id == models.Tag.id)
+        .join(models.Blog, models.Blog.id == models.blog_tags.c.blog_id)
+        .filter(
+            models.Blog.is_public == True,
+            models.Blog.is_published == True,
+        )
+        .group_by(models.Tag.id)
+        .order_by(post_count.desc(), models.Tag.name.asc())
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        {
+            "id": tag.id,
+            "name": tag.name,
+            "slug": tag.slug,
+            "post_count": count,
+        }
+        for tag, count in rows
+    ]
 
 def get_following_feed(
     db: Session,
     user_id: int,
+    skip: int = 0,
     limit: int = 20,
     cursor=None,
 ):
@@ -303,11 +431,7 @@ def get_following_feed(
 
     query = (
         base_visible_query(db)
-        .options(
-            selectinload(models.Blog.creator),
-            selectinload(models.Blog.tags),
-            selectinload(models.Blog.category),
-        )
+        .options(*blog_feed_options())
         .filter(
             exists().where(
                 (models.Follow.following_id == models.Blog.user_id)
@@ -321,6 +445,7 @@ def get_following_feed(
 
     return (
         query.order_by(models.Blog.created_at.desc())
+        .offset(skip)
         .limit(limit)
         .all()
     )
