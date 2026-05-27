@@ -188,46 +188,6 @@ def test_blog_metadata_interactions_and_feed():
     assert feed[0].id == blog.id
 
 
-def test_discovery_feed_and_new_user_suggestions():
-    db = create_test_db()
-    author = user_repo.create_user(
-        schemas.CreateUserRequest(name="AI Author", email="ai-author@example.com", password="abc12345"),
-        db,
-    )
-    reader = user_repo.create_user(
-        schemas.CreateUserRequest(name="New Reader", email="new-reader@example.com", password="abc12345"),
-        db,
-    )
-
-    post = blog_repo.create_blog(
-        schemas.BlogRequest(
-            title="Smart Recommendation Systems",
-            content="A practical guide to ranking posts for new users.",
-            category="Applied AI",
-            tags=["AI", "Recommendations"],
-        ),
-        db,
-        author.id,
-    )
-    blog_repo.toggle_like(post.id, db, reader.id)
-    blog_repo.toggle_bookmark(post.id, db, reader.id)
-    blog_repo.add_comment(post.id, schemas.CommentRequest(content="Great onboarding idea"), db, reader.id)
-
-    feed = blog_repo.get_discovery_feed(db, current_user_id=reader.id, limit=5)
-    assert feed[0].id == post.id
-    assert feed[0].likes_count == 1
-    assert feed[0].bookmarks_count == 1
-    assert feed[0].comments_count == 1
-
-    suggestions = blog_repo.get_suggested_authors(db, current_user_id=reader.id)
-    assert suggestions[0]["user"].id == author.id
-    assert suggestions[0]["posts_count"] == 1
-
-    trends = blog_repo.get_trending_tags(db)
-    assert trends[0]["name"] in {"AI", "Recommendations"}
-    assert trends[0]["post_count"] == 1
-
-
 def test_refresh_tokens_can_be_revoked():
     db = create_test_db()
     user = user_repo.create_user(

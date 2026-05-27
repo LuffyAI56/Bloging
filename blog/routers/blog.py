@@ -48,47 +48,12 @@ def get_following_feed(
     return blog_repo.get_following_feed(db, current_user.id, skip=skip, limit=limit)
 
 
-@router.get("/feed/discover", response_model=List[schemas.BlogResponse])
-def get_discovery_feed(
-    db: Session = Depends(get_db),
-    current_user: Optional[schemas.TokenData] = Depends(get_optional_current_user),
-    skip: int = 0,
-    limit: int = 20,
-    mode: str = "hot",
-):
-    return blog_repo.get_discovery_feed(
-        db,
-        current_user_id=current_user.id if current_user else None,
-        skip=skip,
-        limit=limit,
-        mode=mode,
-    )
-
-
 @router.get("/bookmarks", response_model=List[schemas.BlogResponse])
 def get_my_bookmarks(
     db: Session = Depends(get_db),
     current_user: schemas.TokenData = Depends(require_access_level(AccessLevel.READER)),
 ):
     return blog_repo.get_bookmarked_blogs(db, current_user.id)
-
-
-@router.get("/suggestions/authors", response_model=List[schemas.SuggestedAuthorResponse])
-def get_suggested_authors(
-    db: Session = Depends(get_db),
-    current_user: Optional[schemas.TokenData] = Depends(get_optional_current_user),
-    limit: int = 8,
-):
-    return blog_repo.get_suggested_authors(
-        db,
-        current_user_id=current_user.id if current_user else None,
-        limit=limit,
-    )
-
-
-@router.get("/trending/tags", response_model=List[schemas.TrendingTagResponse])
-def get_trending_tags(db: Session = Depends(get_db), limit: int = 12):
-    return blog_repo.get_trending_tags(db, limit=limit)
 
 
 @router.get("/categories", response_model=List[schemas.CategoryResponse])

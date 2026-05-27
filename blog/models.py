@@ -49,18 +49,6 @@ class Blog(Base):
     bookmarks = relationship("Bookmark", back_populates="blog", cascade="all, delete-orphan")
     reports = relationship("Report", back_populates="blog", cascade="all, delete-orphan")
 
-    @property
-    def likes_count(self):
-        return len(self.likes)
-
-    @property
-    def bookmarks_count(self):
-        return len(self.bookmarks)
-
-    @property
-    def comments_count(self):
-        return len(self.comments)
-
 
 class User(Base):
     """Represents a registered user in the system."""
