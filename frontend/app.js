@@ -18,7 +18,9 @@ const dom = {
   registerName: document.querySelector("#register-name"),
   registerEmail: document.querySelector("#register-email"),
   registerPassword: document.querySelector("#register-password"),
-  authDemoLogin: document.querySelector("#auth-demo-login"),
+  registerPasswordConfirm: document.querySelector("#register-password-confirm"),
+  registerOtp: document.querySelector("#register-otp"),
+  sendOtpButton: document.querySelector("#send-otp"),
   feed: document.querySelector("#feed-list"),
   stories: document.querySelector("#stories"),
   suggestions: document.querySelector("#suggestion-list"),
@@ -346,11 +348,11 @@ function renderPost(post) {
   return `
     <article class="post-card" data-post="${post.id}">
       <aside class="vote-rail" aria-label="Post ranking">
-        <button class="vote-button up" data-like="${post.id}" title="Upvote">
+        <button type="button" class="vote-button up" data-like="${post.id}" title="Upvote">
           <i data-lucide="chevron-up"></i>
         </button>
         <span class="vote-count">${formatCount(score)}</span>
-        <button class="vote-button" data-less="${post.id}" title="Less like this">
+        <button type="button" class="vote-button" data-less="${post.id}" title="Less like this">
           <i data-lucide="chevron-down"></i>
         </button>
       </aside>
@@ -363,7 +365,7 @@ function renderPost(post) {
               <small>s/${escapeHtml(category.toLowerCase().replace(/\s+/g, "-"))} · ${formatDate(post.created_at)}</small>
             </span>
           </div>
-          <button class="follow-button" data-follow="${post.creator.id}">Follow</button>
+          <button type="button" class="follow-button" data-follow="${post.creator.id}">Follow</button>
         </header>
 
         <div class="media-wrap">
@@ -381,28 +383,27 @@ function renderPost(post) {
 
         <footer class="post-footer">
           <div class="engagements">
-            <button class="engage-button" data-like="${post.id}">
+            <button type="button" class="engage-button" data-like="${post.id}" aria-label="Like post">
               <i data-lucide="heart"></i>
-              <span>${formatCount(post.likes_count)} likes</span>
+              <span>${formatCount(post.likes_count)}</span>
             </button>
-            <button class="engage-button" data-open-post="${post.id}">
+            <button type="button" class="engage-button" data-open-post="${post.id}" aria-label="Open comments">
               <i data-lucide="message-circle"></i>
-              <span>${formatCount(post.comments_count)} comments</span>
+              <span>${formatCount(post.comments_count)}</span>
             </button>
-            <button class="engage-button" data-share="${post.id}">
+            <button type="button" class="engage-button" data-share="${post.id}" aria-label="Share post">
               <i data-lucide="repeat-2"></i>
-              <span>${formatCount(post.share_count)} shares</span>
+              <span>${formatCount(post.share_count)}</span>
             </button>
-            <button class="engage-button" data-bookmark="${post.id}">
+            <button type="button" class="engage-button" data-bookmark="${post.id}" aria-label="Bookmark post">
               <i data-lucide="bookmark"></i>
-              <span>${formatCount(post.bookmarks_count)} saves</span>
+              <span>${formatCount(post.bookmarks_count)}</span>
             </button>
-            <button class="engage-button" data-report="${post.id}">
+            <button type="button" class="engage-button" data-report="${post.id}" aria-label="Report post">
               <i data-lucide="flag"></i>
-              <span>Report</span>
             </button>
           </div>
-          <button class="ghost-action read-button" data-open-post="${post.id}">
+          <button type="button" class="ghost-action read-button" data-open-post="${post.id}">
             <i data-lucide="panel-top-open"></i>
             <span>Expand Thread</span>
           </button>
@@ -412,24 +413,49 @@ function renderPost(post) {
   `;
 }
 
-function updatePostCount(postId, key, delta) {
+function updateCountDisplay(postId, dataAttr, count, active = null) {
+  const selectors = [
+    `article.post-card[data-post="${postId}"] button[data-${dataAttr}="${postId}"]`,
+    `#post-dialog button[data-${dataAttr}="${postId}"]`,
+  ];
+  selectors.forEach((selector) => {
+    const button = document.querySelector(selector);
+    if (!button) return;
+    const span = button.querySelector("span");
+    if (span) span.textContent = formatCount(count);
+    if (active !== null) button.classList.toggle("active", active);
+  });
+}
+
+function updatePostCount(postId, key, delta, active = null) {
   const post = state.posts.find((item) => item.id === postId);
   if (!post) return;
   post[key] = Math.max(0, (post[key] || 0) + delta);
-  renderPosts();
+
+  const mapping = {
+    likes_count: "like",
+    comments_count: "open-post",
+    share_count: "share",
+    bookmarks_count: "bookmark",
+  };
+
+  const dataAttr = mapping[key];
+  if (dataAttr) {
+    updateCountDisplay(postId, dataAttr, post[key], active);
+  }
 }
 
 async function likePost(postId) {
   if (!ensureAuth()) return;
   const response = await api(`/blog/${postId}/like`, { method: "POST" }, true);
-  updatePostCount(postId, "likes_count", response.active ? 1 : -1);
+  updatePostCount(postId, "likes_count", response.active ? 1 : -1, response.active);
   toast(response.message);
 }
 
 async function bookmarkPost(postId) {
   if (!ensureAuth()) return;
   const response = await api(`/blog/${postId}/bookmark`, { method: "POST" }, true);
-  updatePostCount(postId, "bookmarks_count", response.active ? 1 : -1);
+  updatePostCount(postId, "bookmarks_count", response.active ? 1 : -1, response.active);
   toast(response.message);
 }
 
@@ -488,17 +514,17 @@ async function openPost(postId) {
     </div>
     <p class="dialog-body-text">${escapeHtml(post.content)}</p>
     <div class="engagements">
-      <button class="engage-button" data-like="${post.id}">
+      <button type="button" class="engage-button" data-like="${post.id}" aria-label="Like post">
         <i data-lucide="heart"></i>
-        <span>${formatCount(post.likes_count)} likes</span>
+        <span>${formatCount(post.likes_count)}</span>
       </button>
-      <button class="engage-button" data-bookmark="${post.id}">
+      <button type="button" class="engage-button" data-bookmark="${post.id}" aria-label="Bookmark post">
         <i data-lucide="bookmark"></i>
-        <span>${formatCount(post.bookmarks_count)} saves</span>
+        <span>${formatCount(post.bookmarks_count)}</span>
       </button>
-      <button class="engage-button" data-share="${post.id}">
+      <button type="button" class="engage-button" data-share="${post.id}" aria-label="Share post">
         <i data-lucide="repeat-2"></i>
-        <span>${formatCount(post.share_count)} shares</span>
+        <span>${formatCount(post.share_count)}</span>
       </button>
     </div>
     <section class="comment-list" id="comment-list">
@@ -570,6 +596,7 @@ async function register(event) {
     name: dom.registerName.value.trim(),
     email: dom.registerEmail.value.trim(),
     password: dom.registerPassword.value,
+    otp: dom.registerOtp ? dom.registerOtp.value.trim() : undefined,
   };
 
   await api("/user/", {
@@ -686,21 +713,72 @@ function wireEvents() {
 
   dom.search.addEventListener("input", debounce((event) => loadSearch(event.target.value)));
 
-  document.querySelector("#refresh-feed").addEventListener("click", () => loadMode(state.mode === "bookmarks" ? "hot" : state.mode));
+  // Auth tab switcher
+  document.querySelectorAll(".auth-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".auth-tab").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+      const target = tab.dataset.tab;
+      document.querySelectorAll(".auth-form").forEach((form) => {
+        form.classList.toggle("auth-form--active", form.dataset.form === target);
+      });
+      iconRefresh();
+    });
+  });
   document.querySelector("#load-bookmarks").addEventListener("click", loadBookmarks);
   document.querySelector("#focus-login").addEventListener("click", () => {
     document.querySelector("#rail-account").scrollIntoView({ behavior: "smooth", block: "center" });
   });
 
-  dom.authDemoLogin.addEventListener("click", () => login("seed_author_0001@example.com", "SeedPass123").catch((error) => toast(error.message)));
+  // Demo login removed: no demo button or handler
   dom.authLoginForm.addEventListener("submit", (event) => {
     event.preventDefault();
     login(dom.authLoginEmail.value.trim(), dom.authLoginPassword.value).catch((error) => toast(error.message));
   });
   dom.authRegisterForm.addEventListener("submit", (event) => {
+    // client-side confirm password check
+    if (dom.registerPassword.value !== dom.registerPasswordConfirm.value) {
+      event.preventDefault();
+      toast("Passwords do not match");
+      return;
+    }
     register(event).catch((error) => toast(error.message));
   });
   dom.topLogout.addEventListener("click", logout);
+
+  // Send OTP handler (calls backend /request-otp)
+  if (dom.sendOtpButton) {
+    dom.sendOtpButton.addEventListener("click", async () => {
+      const email = dom.registerEmail.value.trim();
+      if (!email) {
+        toast("Enter an email to send OTP");
+        return;
+      }
+      try {
+        const resp = await fetch("/request-otp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+        const data = await resp.json();
+        if (resp.ok) {
+          dom.registerOtp.value = data.code || "";
+          toast("OTP sent (dev mode: code filled)");
+        } else {
+          toast(data.detail || "OTP request failed");
+        }
+      } catch (err) {
+        toast("Failed to request OTP");
+      }
+    });
+  }
+
+  // Show password toggle
+  const showPasswordToggle = document.querySelector("#show-password-toggle");
+  if (showPasswordToggle) {
+    showPasswordToggle.addEventListener("change", () => {
+      const type = showPasswordToggle.checked ? "text" : "password";
+      dom.registerPassword.type = type;
+      if (dom.registerPasswordConfirm) dom.registerPasswordConfirm.type = type;
+      if (document.querySelector("#auth-login-password")) document.querySelector("#auth-login-password").type = type;
+    });
+  }
 
   document.querySelector("#open-create").addEventListener("click", () => dom.createDialog.showModal());
   document.querySelector("#open-create-inline").addEventListener("click", () => dom.createDialog.showModal());

@@ -21,7 +21,7 @@ blog_tags = Table(
     Column("tag_id", ForeignKey("tags.id"), primary_key=True),
 )
 
-
+ 
 class Blog(Base):
     """Represents a blog post authored by a user."""
     __tablename__ = "blogs"
@@ -209,3 +209,16 @@ class Follow(Base):
 
     follower = relationship("User", foreign_keys=[follower_id], back_populates="following")
     following = relationship("User", foreign_keys=[following_id], back_populates="followers")
+
+
+class EmailOTP(Base):
+    """Stores one-time codes sent to email addresses for verification."""
+    __tablename__ = "email_otps"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, index=True, nullable=False)
+    code_hash = Column(String, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now)
+

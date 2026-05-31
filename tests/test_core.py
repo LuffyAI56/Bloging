@@ -8,6 +8,7 @@ from blog.access_control import AccessLevel, require_access_level
 from blog.models import Base
 from blog.repository import blog as blog_repo
 from blog.repository import user as user_repo
+from blog.routers import authentication
 
 
 def create_test_db():
@@ -54,6 +55,24 @@ def test_password_hashing_and_token_flow():
     access_token = token.create_access_token({"sub": user.email})
     payload = token.verify_token(access_token)
     assert payload["sub"] == user.email
+
+
+def test_register_route_creates_user_and_returns_tokens():
+    db = create_test_db()
+    request = schemas.CreateUserRequest(
+        name="Register User",
+        email="register@example.com",
+        password="secure123",
+    )
+
+    otp_code = user_repo.request_email_otp(request.email, db)
+    verification = authentication.verify_otp(schemas.VerifyOTPRequest(email=request.email, code=otp_code), db)
+    assert verification["verified"] is True
+
+    token_response = authentication.register(request, db)
+    assert token_response.access_token
+    assert token_response.refresh_token
+    assert token.verify_token(token_response.access_token)["sub"] == request.email
 
 
 def test_blog_crud_requires_owner():

@@ -5,6 +5,8 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import hashing, models, schemas
+from datetime import datetime, timedelta, timezone
+from hashlib import sha256
 
 
 def create_user(request: schemas.CreateUserRequest, db: Session):
@@ -137,3 +139,42 @@ def unfollow_author(current_user_id: int, author_id: int, db: Session):
         db.commit()
 
     return schemas.InteractionResponse(message="Unfollowed author", active=False)
+
+
+def _hash_code(value: str) -> str:
+    return sha256(value.encode("utf-8")).hexdigest()
+
+
+def request_email_otp(email: str, db: Session, ttl_minutes: int = 10):
+    """Create and persist an OTP for the given email. Returns the raw code (caller should send email)."""
+    code = f"{sha256((email + str(datetime.now(timezone.utc))).encode('utf-8')).hexdigest()[:6]}"
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes)
+    otp = models.EmailOTP(email=email, code_hash=_hash_code(code), expires_at=expires_at)
+    db.add(otp)
+    db.commit()
+    db.refresh(otp)
+    return code
+
+
+def verify_email_otp(email: str, code: str, db: Session):
+    """Verify an OTP for the given email. Returns True if valid and marks it used."""
+    hashed = _hash_code(code)
+    now = datetime.now(timezone.utc)
+    otp = (
+        db.query(models.EmailOTP)
+        .filter(models.EmailOTP.email == email, models.EmailOTP.used == False, models.EmailOTP.expires_at > now)
+        .order_by(models.EmailOTP.created_at.desc())
+        .first()
+    )
+    if not otp:
+        return False
+    if otp.code_hash != hashed:
+        return False
+    otp.used = True
+    db.commit()
+    return True
+
+
+def is_email_verified(email: str, db: Session):
+    """Return True if there exists a used OTP record for the email (verification completed)."""
+    return db.query(models.EmailOTP).filter(models.EmailOTP.email == email, models.EmailOTP.used == True).count() > 0

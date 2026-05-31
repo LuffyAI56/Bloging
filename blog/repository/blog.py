@@ -350,47 +350,57 @@ def get_discovery_feed(
 
 def get_suggested_authors(db: Session, current_user_id: int | None = None, limit: int = 8):
     """Returns authors worth following for onboarding and discovery sidebars."""
-    authors = db.query(models.User).filter(
-        models.User.is_active == True,
-        models.User.role.in_(["author", "admin"]),
-    ).all()
-    suggestions = []
+    # Aggregate posts and followers counts in a single query to avoid N+1 queries
+    posts_count_subq = (
+        db.query(models.Blog.user_id.label("user_id"), func.count(models.Blog.id).label("posts_count"))
+        .filter(models.Blog.is_public == True, models.Blog.is_published == True)
+        .group_by(models.Blog.user_id)
+    ).subquery()
 
-    for author in authors:
-        if current_user_id and author.id == current_user_id:
-            continue
+    followers_count_subq = (
+        db.query(models.Follow.following_id.label("user_id"), func.count(models.Follow.id).label("followers_count"))
+        .group_by(models.Follow.following_id)
+    ).subquery()
 
-        posts_count = db.query(models.Blog).filter(
-            models.Blog.user_id == author.id,
-            models.Blog.is_public == True,
-            models.Blog.is_published == True,
-        ).count()
-        if posts_count == 0:
-            continue
-
-        followers_count = db.query(models.Follow).filter(models.Follow.following_id == author.id).count()
-        is_following = False
-        if current_user_id:
-            is_following = db.query(models.Follow).filter(
-                models.Follow.follower_id == current_user_id,
-                models.Follow.following_id == author.id,
-            ).first() is not None
-
-        suggestions.append(
-            {
-                "user": author,
-                "followers_count": followers_count,
-                "posts_count": posts_count,
-                "is_following": is_following,
-                "_score": followers_count * 4 + posts_count * 3,
-            }
+    # Base query for active authors
+    query = (
+        db.query(
+            models.User,
+            func.coalesce(posts_count_subq.c.posts_count, 0).label("posts_count"),
+            func.coalesce(followers_count_subq.c.followers_count, 0).label("followers_count"),
         )
+        .outerjoin(posts_count_subq, posts_count_subq.c.user_id == models.User.id)
+        .outerjoin(followers_count_subq, followers_count_subq.c.user_id == models.User.id)
+        .filter(models.User.is_active == True, models.User.role.in_(["author", "admin"]))
+    )
 
-    suggestions.sort(key=lambda item: item["_score"], reverse=True)
-    return [
-        {key: value for key, value in suggestion.items() if key != "_score"}
-        for suggestion in suggestions[:limit]
-    ]
+    if current_user_id:
+        # Exclude current user from suggestions
+        query = query.filter(models.User.id != current_user_id)
+
+    # Only include authors with at least one public published post
+    query = query.filter(func.coalesce(posts_count_subq.c.posts_count, 0) > 0)
+
+    # Compute score and order
+    score_expr = (func.coalesce(followers_count_subq.c.followers_count, 0) * 4 + func.coalesce(posts_count_subq.c.posts_count, 0) * 3)
+    rows = query.order_by(score_expr.desc()).limit(limit).all()
+
+    results = []
+    # Determine following status efficiently when current_user_id is provided
+    following_set = set()
+    if current_user_id:
+        follows = db.query(models.Follow.following_id).filter(models.Follow.follower_id == current_user_id).all()
+        following_set = {f.following_id for f in follows}
+
+    for user, posts_count, followers_count in rows:
+        results.append({
+            "user": user,
+            "followers_count": int(followers_count),
+            "posts_count": int(posts_count),
+            "is_following": (user.id in following_set) if current_user_id else False,
+        })
+
+    return results
 
 
 def get_trending_tags(db: Session, limit: int = 12):

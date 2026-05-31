@@ -10,70 +10,155 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/frontend/styles.css?v=5" />
+    <link rel="stylesheet" href="/frontend/styles.css?v=7" />
   </head>
-  <body class="auth-locked">
+  <body class="auth-locked theme-violet">
     <main class="auth-screen" id="auth-screen">
+      <!-- Left: Hero -->
       <section class="auth-hero">
         <a class="brand auth-brand" href="/" aria-label="Synapse home">
           <span class="brand-mark">S</span>
           <span>
             <strong>Synapse</strong>
-            <small>social blogs</small>
           </span>
         </a>
-        <div>
-          <p class="auth-kicker">Private social blogging</p>
-          <h1>Login or create an account to enter the feed.</h1>
-          <p class="auth-copy">
-            Read posts, follow writers, save ideas, comment, and publish only after signing in.
-          </p>
+        <p class="auth-kicker">Write, discover, and connect</p>
+        <h1>Where ideas come alive.</h1>
+        <p class="auth-copy">
+          Join thousands of writers and readers. Share your stories, discover fresh perspectives,
+          and build meaningful connections — all in one place.
+        </p>
+        <div class="auth-stats">
+          <div class="auth-stat">
+            <strong>12K+</strong>
+            <span>Writers</span>
+          </div>
+          <div class="auth-stat">
+            <strong>48K+</strong>
+            <span>Articles</span>
+          </div>
+          <div class="auth-stat">
+            <strong>2M+</strong>
+            <span>Readers</span>
+          </div>
         </div>
-        <button class="primary-action auth-demo" id="auth-demo-login">
-          <i data-lucide="sparkles"></i>
-          <span>Continue as Demo Author</span>
-        </button>
       </section>
 
-      <section class="auth-cards" aria-label="Authentication">
+      <!-- Right: Auth Card -->
+      <section class="auth-cards">
         <article class="auth-card">
-          <h2>Login</h2>
-          <form id="auth-login-form">
+          <div class="auth-tabs">
+            <button class="auth-tab active" data-tab="login">Sign in</button>
+            <button class="auth-tab" data-tab="register">Create account</button>
+          </div>
+
+          <!-- Login Form -->
+          <form id="auth-login-form" class="auth-form auth-form--active" data-form="login">
             <label>
               <span>Email</span>
-              <input type="email" id="auth-login-email" value="seed_author_0001@example.com" required />
+              <div class="input-icon-wrap">
+                <i data-lucide="mail" class="input-icon"></i>
+                <input
+                  type="email"
+                  id="auth-login-email"
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
             </label>
             <label>
               <span>Password</span>
-              <input type="password" id="auth-login-password" value="SeedPass123" required />
+              <div class="input-icon-wrap">
+                <i data-lucide="lock" class="input-icon"></i>
+                <input
+                  type="password"
+                  id="auth-login-password"
+                  placeholder="Enter your password"
+                  required
+                />
+              </div>
             </label>
             <button class="primary-action full" type="submit">
               <i data-lucide="log-in"></i>
-              <span>Login</span>
+              <span>Sign in</span>
             </button>
           </form>
-        </article>
 
-        <article class="auth-card">
-          <h2>Create Account</h2>
-          <form id="auth-register-form">
+          <!-- Register Form -->
+          <form id="auth-register-form" class="auth-form" data-form="register">
             <label>
-              <span>Name</span>
-              <input type="text" id="register-name" required />
+              <span>Full name</span>
+              <div class="input-icon-wrap">
+                <i data-lucide="user" class="input-icon"></i>
+                <input
+                  type="text"
+                  id="register-name"
+                  placeholder="John Doe"
+                  required
+                />
+              </div>
             </label>
             <label>
               <span>Email</span>
-              <input type="email" id="register-email" required />
+              <div class="input-icon-wrap">
+                <i data-lucide="mail" class="input-icon"></i>
+                <input
+                  type="email"
+                  id="register-email"
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
             </label>
+            <div class="otp-row">
+              <button type="button" class="ghost-action otp-btn" id="send-otp">
+                <i data-lucide="shield-check"></i>
+                <span>Send OTP</span>
+              </button>
+              <div class="input-icon-wrap">
+                <i data-lucide="key-round" class="input-icon"></i>
+                <input type="text" id="register-otp" placeholder="Enter OTP code" />
+              </div>
+            </div>
             <label>
               <span>Password</span>
-              <input type="password" id="register-password" minlength="8" required />
+              <div class="input-icon-wrap">
+                <i data-lucide="lock" class="input-icon"></i>
+                <input
+                  type="password"
+                  id="register-password"
+                  placeholder="Min. 8 characters"
+                  minlength="8"
+                  required
+                />
+              </div>
             </label>
-            <button class="ghost-action full" type="submit">
+            <label>
+              <span>Confirm password</span>
+              <div class="input-icon-wrap">
+                <i data-lucide="lock" class="input-icon"></i>
+                <input
+                  type="password"
+                  id="register-password-confirm"
+                  placeholder="Repeat your password"
+                  minlength="8"
+                  required
+                />
+              </div>
+            </label>
+            <label class="show-password">
+              <input type="checkbox" id="show-password-toggle" />
+              <span>Show passwords</span>
+            </label>
+            <button class="primary-action full" type="submit">
               <i data-lucide="user-plus"></i>
-              <span>Create Account</span>
+              <span>Create account</span>
             </button>
           </form>
+
+          <p class="auth-footer-text">
+            By continuing, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
+          </p>
         </article>
       </section>
     </main>
@@ -84,7 +169,7 @@
           <span class="brand-mark">S</span>
           <span>
             <strong>Synapse</strong>
-            <small>social blogs</small>
+            <small>Bright blogs</small>
           </span>
         </a>
 
@@ -99,7 +184,7 @@
           </button>
           <button class="nav-item" id="open-create">
             <i data-lucide="square-pen"></i>
-            <span>Create</span>
+            <span>New post</span>
           </button>
           <button class="nav-item" id="load-bookmarks">
             <i data-lucide="bookmark"></i>
@@ -112,7 +197,7 @@
         </nav>
 
         <section class="node-list" aria-labelledby="nodes-title">
-          <h2 id="nodes-title">Your Nodes</h2>
+          <h2 id="nodes-title">Topics</h2>
           <button class="node active" data-topic="all">
             <span class="node-dot teal"></span>
             <span>s/all</span>
@@ -136,7 +221,10 @@
         </section>
 
         <div class="rail-account" id="rail-account">
-          <img src="https://api.dicebear.com/7.x/initials/svg?seed=Guest" alt="" />
+          <img
+            src="https://api.dicebear.com/7.x/initials/svg?seed=Guest"
+            alt="User avatar"
+          />
           <span>
             <strong>Guest</strong>
             <small>Explore mode</small>
@@ -148,12 +236,13 @@
         <header class="top-bar">
           <div class="search-wrap">
             <i data-lucide="search"></i>
-            <input id="search-input" type="search" placeholder="Search posts, tags, authors" />
+            <input
+              id="search-input"
+              type="search"
+              placeholder="Search posts, tags, authors"
+            />
           </div>
           <div class="top-actions">
-            <button class="icon-button" id="refresh-feed" title="Refresh feed" aria-label="Refresh feed">
-              <i data-lucide="refresh-cw"></i>
-            </button>
             <button class="danger-action" id="top-logout">
               <i data-lucide="log-out"></i>
               <span>Logout</span>
@@ -174,7 +263,7 @@
             <button class="segment active" data-mode="hot">For You</button>
             <button class="segment" data-mode="following">Following</button>
             <button class="segment" data-mode="latest">Latest</button>
-            <button class="segment" data-mode="visual">Visual Grid</button>
+            <button class="segment" data-mode="visual">Visual</button>
           </div>
           <button class="ghost-action" id="open-create-inline">
             <i data-lucide="plus"></i>
@@ -186,52 +275,72 @@
       </main>
 
       <aside class="right-panel" aria-label="Discovery">
-        <section class="theme-panel" id="theme-panel">
+        <section class="panel theme-panel">
           <div class="panel-heading">
-            <h2>Color Palette</h2>
+            <h2>Color palette</h2>
           </div>
           <div class="theme-list">
-            <button class="theme-btn active" data-theme="violet" style="--btn-accent: var(--violet);">
-              <span class="theme-dot" style="background: var(--violet);"></span>
+            <button
+              class="theme-btn active"
+              data-theme="violet"
+              style="--btn-accent: var(--violet)"
+            >
+              <span class="theme-dot" style="background: var(--violet)"></span>
               <span>Violet</span>
             </button>
-            <button class="theme-btn" data-theme="teal" style="--btn-accent: #14b8a6;">
-              <span class="theme-dot" style="background: #14b8a6;"></span>
+            <button
+              class="theme-btn"
+              data-theme="teal"
+              style="--btn-accent: #14b8a6"
+            >
+              <span class="theme-dot" style="background: #14b8a6"></span>
               <span>Teal</span>
             </button>
-            <button class="theme-btn" data-theme="amber" style="--btn-accent: var(--amber);">
-              <span class="theme-dot" style="background: var(--amber);"></span>
+            <button
+              class="theme-btn"
+              data-theme="amber"
+              style="--btn-accent: var(--amber)"
+            >
+              <span class="theme-dot" style="background: var(--amber)"></span>
               <span>Amber</span>
             </button>
-            <button class="theme-btn" data-theme="rose" style="--btn-accent: var(--rose);">
-              <span class="theme-dot" style="background: var(--rose);"></span>
+            <button
+              class="theme-btn"
+              data-theme="rose"
+              style="--btn-accent: var(--rose)"
+            >
+              <span class="theme-dot" style="background: var(--rose)"></span>
               <span>Rose</span>
             </button>
-            <button class="theme-btn" data-theme="indigo" style="--btn-accent: var(--indigo);">
-              <span class="theme-dot" style="background: var(--indigo);"></span>
+            <button
+              class="theme-btn"
+              data-theme="indigo"
+              style="--btn-accent: var(--indigo)"
+            >
+              <span class="theme-dot" style="background: var(--indigo)"></span>
               <span>Indigo</span>
             </button>
           </div>
         </section>
 
-        <section class="trend-panel">
+        <section class="panel trend-panel">
           <div class="panel-heading">
-            <h2>What's Buzzing</h2>
+            <h2>What&apos;s buzzing</h2>
             <span id="trend-count"></span>
           </div>
           <div class="trend-list" id="trend-list"></div>
         </section>
 
-        <section class="suggestion-panel">
+        <section class="panel suggestion-panel">
           <div class="panel-heading">
-            <h2>Recommended Bloggers</h2>
+            <h2>Recommended bloggers</h2>
           </div>
           <div class="suggestion-list" id="suggestion-list"></div>
         </section>
 
-        <section class="activity-panel">
+        <section class="panel activity-panel">
           <div class="panel-heading">
-            <h2>Live Activity</h2>
+            <h2>Live activity</h2>
           </div>
           <div class="activity-list" id="activity-list"></div>
         </section>
@@ -240,7 +349,11 @@
 
     <dialog class="post-dialog" id="post-dialog">
       <article class="dialog-content">
-        <button class="icon-button close-dialog" data-close-dialog aria-label="Close">
+        <button
+          class="icon-button close-dialog"
+          data-close-dialog
+          aria-label="Close"
+        >
           <i data-lucide="x"></i>
         </button>
         <div id="dialog-body"></div>
@@ -249,7 +362,11 @@
 
     <dialog class="post-dialog" id="create-dialog">
       <article class="dialog-content compact">
-        <button class="icon-button close-dialog" data-close-create aria-label="Close">
+        <button
+          class="icon-button close-dialog"
+          data-close-create
+          aria-label="Close"
+        >
           <i data-lucide="x"></i>
         </button>
         <h2>Create Post</h2>
@@ -260,21 +377,38 @@
           </label>
           <label>
             <span>Cover image URL</span>
-            <input id="create-cover" name="cover_image_url" placeholder="https://picsum.photos/seed/new/1200/630" />
+            <input
+              id="create-cover"
+              name="cover_image_url"
+              placeholder="https://picsum.photos/seed/new/1200/630"
+            />
           </label>
           <div class="form-grid">
             <label>
               <span>Category</span>
-              <input id="create-category" name="category" placeholder="Applied AI" />
+              <input
+                id="create-category"
+                name="category"
+                placeholder="Applied AI"
+              />
             </label>
             <label>
               <span>Tags</span>
-              <input id="create-tags" name="tags" placeholder="ai, fastapi, design" />
+              <input
+                id="create-tags"
+                name="tags"
+                placeholder="ai, fastapi, design"
+              />
             </label>
           </div>
           <label>
             <span>Post</span>
-            <textarea id="create-content" name="content" rows="8" required></textarea>
+            <textarea
+              id="create-content"
+              name="content"
+              rows="8"
+              required
+            ></textarea>
           </label>
           <button class="primary-action full" type="submit">
             <i data-lucide="send"></i>
@@ -286,6 +420,6 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <script src="/frontend/app.js?v=5"></script>
+    <script src="/frontend/app.js?v=7"></script>
   </body>
 </html>

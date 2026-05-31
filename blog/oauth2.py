@@ -35,16 +35,11 @@ def get_current_user(
     if payload is None:
         raise credentials_exception
 
-    username: str = payload.get("sub")
-
-    if username is None:
+    token_user = _user_from_payload(payload, db)
+    if token_user is None:
         raise credentials_exception
 
-    user = db.query(models.User).filter(models.User.email == username, models.User.is_active == True).first()
-    if user is None:
-        raise credentials_exception
-
-    return schemas.TokenData(email=user.email, id=user.id, role=user.role)
+    return token_user
 
 
 def get_optional_current_user(
@@ -63,8 +58,15 @@ def get_optional_current_user(
     if payload is None:
         return None
 
-    username: str = payload.get("sub")
+    return _user_from_payload(payload, db)
 
+
+def _user_from_payload(payload: dict, db: Session):
+    """
+    Resolve a `schemas.TokenData` from a decoded JWT payload.
+    Returns `None` if the payload is invalid or the user does not exist/active.
+    """
+    username: str = payload.get("sub")
     if username is None:
         return None
 

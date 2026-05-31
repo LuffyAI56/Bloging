@@ -40,11 +40,31 @@ class LogoutRequest(BaseModel):
     refresh_token: str
 
 
+class EmailOTPRequest(BaseModel):
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str):
+        return normalize_email_value(value)
+
+
+class VerifyOTPRequest(BaseModel):
+    email: str
+    code: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str):
+        return normalize_email_value(value)
+
+
 class CreateUserRequest(BaseModel):
     """Request model for user registration."""
     name: str
     email: str
     password: str
+    otp: Optional[str] = None
 
     @field_validator("email")
     @classmethod

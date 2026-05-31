@@ -33,6 +33,15 @@ class Settings:
         self.allowed_origins = self._csv(os.getenv("ALLOWED_ORIGINS", "http://127.0.0.1:8000,http://localhost:8000"))
         self.allowed_hosts = self._csv(os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost"))
 
+        # Email (SMTP) settings for OTP delivery
+        self.smtp_host = os.getenv("SMTP_HOST")
+        self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
+        self.smtp_user = os.getenv("SMTP_USER")
+        self.smtp_password = os.getenv("SMTP_PASSWORD")
+        self.smtp_from = os.getenv("SMTP_FROM", f"no-reply@{os.getenv('SMTP_DOMAIN','localhost')}")
+        # When true, the server will send OTPs via SMTP instead of returning them in the API response.
+        self.send_otp_via_email = os.getenv("SEND_OTP_VIA_EMAIL", "false").lower() in ("1", "true", "yes")
+
         if self.environment == "production" and not os.getenv("SECRET_KEY"):
             raise RuntimeError("SECRET_KEY must be set in production")
 
