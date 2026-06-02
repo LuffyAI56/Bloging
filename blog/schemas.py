@@ -6,6 +6,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from .utils import sanitize_text
+
 
 VALID_ROLES = {"reader", "author", "admin"}
 
@@ -15,6 +17,12 @@ def normalize_email_value(value: str):
     if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
         raise ValueError("Enter a valid email address")
     return email
+
+
+def validate_text_field(value: str, field_name: str, max_length: int):
+    if value is None:
+        return None
+    return sanitize_text(value, max_length=max_length)
 
 
 def validate_password_value(value: str):
@@ -66,6 +74,11 @@ class CreateUserRequest(BaseModel):
     password: str
     otp: Optional[str] = None
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str):
+        return validate_text_field(value, "name", max_length=100)
+
     @field_validator("email")
     @classmethod
     def normalize_email(cls, value: str):
@@ -81,6 +94,26 @@ class UpdateUserRequest(BaseModel):
     name: Optional[str] = None
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: Optional[str]):
+        return validate_text_field(value, "name", max_length=100)
+
+    @field_validator("bio")
+    @classmethod
+    def validate_bio(cls, value: Optional[str]):
+        return validate_text_field(value, "bio", max_length=500)
+
+    @field_validator("avatar_url")
+    @classmethod
+    def validate_avatar_url(cls, value: Optional[str]):
+        if value is None:
+            return None
+        value = value.strip()
+        if len(value) > 2048:
+            raise ValueError("Avatar URL must be 2048 characters or fewer")
+        return sanitize_text(value, max_length=2048)
 
 
 class ChangePasswordRequest(BaseModel):
@@ -154,6 +187,40 @@ class BlogRequest(BaseModel):
     category: Optional[str] = None
     tags: List[str] = Field(default_factory=list)
 
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str):
+        return validate_text_field(value, "title", max_length=250)
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: str):
+        return validate_text_field(value, "content", max_length=20000)
+
+    @field_validator("cover_image_url")
+    @classmethod
+    def validate_cover_image_url(cls, value: Optional[str]):
+        if value is None:
+            return None
+        value = value.strip()
+        if len(value) > 1024:
+            raise ValueError("Cover image URL must be 1024 characters or fewer")
+        return sanitize_text(value, max_length=1024)
+
+    @field_validator("category")
+    @classmethod
+    def validate_category(cls, value: Optional[str]):
+        return validate_text_field(value, "category", max_length=100)
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def validate_tags(cls, value):
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise TypeError("tags must be a list")
+        return [sanitize_text(tag, max_length=50) for tag in value if tag and tag.strip()]
+
 
 class BlogUpdateRequest(BaseModel):
     title: Optional[str] = None
@@ -163,6 +230,40 @@ class BlogUpdateRequest(BaseModel):
     is_published: Optional[bool] = None
     category: Optional[str] = None
     tags: Optional[List[str]] = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: Optional[str]):
+        return validate_text_field(value, "title", max_length=250)
+
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: Optional[str]):
+        return validate_text_field(value, "content", max_length=20000)
+
+    @field_validator("cover_image_url")
+    @classmethod
+    def validate_cover_image_url(cls, value: Optional[str]):
+        if value is None:
+            return None
+        value = value.strip()
+        if len(value) > 1024:
+            raise ValueError("Cover image URL must be 1024 characters or fewer")
+        return sanitize_text(value, max_length=1024)
+
+    @field_validator("category")
+    @classmethod
+    def validate_category(cls, value: Optional[str]):
+        return validate_text_field(value, "category", max_length=100)
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def validate_tags(cls, value):
+        if value is None:
+            return value
+        if not isinstance(value, list):
+            raise TypeError("tags must be a list")
+        return [sanitize_text(tag, max_length=50) for tag in value if tag and tag.strip()]
 
 
 class BlogResponse(BaseModel):
@@ -204,6 +305,11 @@ class CommentRequest(BaseModel):
     content: str
     parent_id: Optional[int] = None
 
+    @field_validator("content")
+    @classmethod
+    def validate_content(cls, value: str):
+        return validate_text_field(value, "comment content", max_length=2000)
+
 
 class CommentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -219,6 +325,16 @@ class CommentResponse(BaseModel):
 class ReportRequest(BaseModel):
     reason: str
     details: Optional[str] = None
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, value: str):
+        return validate_text_field(value, "report reason", max_length=150)
+
+    @field_validator("details")
+    @classmethod
+    def validate_details(cls, value: Optional[str]):
+        return validate_text_field(value, "report details", max_length=2000)
 
 
 class InteractionResponse(BaseModel):

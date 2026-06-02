@@ -1,5 +1,6 @@
 from email.message import EmailMessage
 import smtplib
+import ssl
 from typing import Optional
 from .config import get_settings
 
@@ -15,14 +16,16 @@ def send_otp_email(recipient: str, code: str) -> None:
     msg["To"] = recipient
     msg.set_content(f"Your verification code is: {code}\nThis code will expire shortly.")
 
-    # Use STARTTLS if port is 587 (default) or if credentials provided
+    server = None
+    context = ssl.create_default_context()
+
     try:
         if settings.smtp_port == 465:
-            server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=10)
+            server = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=10, context=context)
         else:
             server = smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10)
             server.ehlo()
-            server.starttls()
+            server.starttls(context=context)
             server.ehlo()
 
         if settings.smtp_user and settings.smtp_password:
@@ -30,7 +33,8 @@ def send_otp_email(recipient: str, code: str) -> None:
 
         server.send_message(msg)
     finally:
-        try:
-            server.quit()
-        except Exception:
-            pass
+        if server is not None:
+            try:
+                server.quit()
+            except Exception:
+                pass

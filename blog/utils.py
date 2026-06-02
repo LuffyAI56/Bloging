@@ -1,7 +1,24 @@
 """
 Utility functions for text manipulation and generation.
 """
+import html
 import re
+
+
+def sanitize_text(value: str, max_length: int = 10000) -> str:
+    """Normalize and escape text input to prevent HTML injection."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise TypeError("Expected a string")
+
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError("Text value must not be empty")
+    if len(normalized) > max_length:
+        raise ValueError(f"Text value must be at most {max_length} characters")
+
+    return html.escape(normalized)
 
 
 def slugify(value: str):
