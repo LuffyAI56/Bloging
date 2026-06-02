@@ -165,7 +165,6 @@ def request_otp(body: EmailOTPRequest, db: Session = Depends(database.get_db), r
 
     code = request_email_otp(body.email, db)
     settings = get_settings()
-    # If configured, send via SMTP and do not return the code in the response.
     if settings.send_otp_via_email:
         try:
             send_otp_email(body.email, code)
@@ -173,7 +172,12 @@ def request_otp(body: EmailOTPRequest, db: Session = Depends(database.get_db), r
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
         return {"sent": True}
 
-    # Default/dev behavior: return the code in the response to simplify testing.
+    if settings.environment == "production":
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="OTP delivery is not configured for production.",
+        )
+
     return {"code": code}
 
 

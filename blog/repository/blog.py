@@ -4,10 +4,11 @@ Data access layer for blogs.
 
 from fastapi import HTTPException
 from sqlalchemy import desc, exists, func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from .. import models, schemas
-from ..utils import unique_slug
+from ..utils import unique_slug, sanitize_text
 
 
 def blog_feed_options():
@@ -27,7 +28,7 @@ def get_or_create_category(db: Session, name: str | None):
     if not name:
         return None
 
-    normalized_name = name.strip()
+    normalized_name = sanitize_text(name, max_length=100)
     category = db.query(models.Category).filter(models.Category.name == normalized_name).first()
     if category:
         return category
@@ -43,9 +44,9 @@ def get_or_create_tags(db: Session, names: list[str]):
     """Handles get or create tags logic."""
     tags = []
     for name in names:
-        normalized_name = name.strip()
-        if not normalized_name:
+        if not name or not name.strip():
             continue
+        normalized_name = sanitize_text(name, max_length=50)
 
         tag = db.query(models.Tag).filter(models.Tag.name == normalized_name).first()
         if not tag:
@@ -106,11 +107,15 @@ def get_my_blogs(db: Session, user_id: int, skip: int = 0, limit: int = 20):
 def create_blog(request: schemas.BlogRequest, db: Session, user_id: int):
     """Handles create blog logic."""
     category = get_or_create_category(db, request.category)
+    title = sanitize_text(request.title, max_length=250)
+    content = sanitize_text(request.content, max_length=20000)
+    cover_image_url = sanitize_text(request.cover_image_url, max_length=1024) if request.cover_image_url else None
+
     new_blog = models.Blog(
-        title=request.title,
-        slug=unique_slug(db, models.Blog, request.title),
-        content=request.content,
-        cover_image_url=request.cover_image_url,
+        title=title,
+        slug=unique_slug(db, models.Blog, title),
+        content=content,
+        cover_image_url=cover_image_url,
         is_public=request.is_public,
         is_published=request.is_published,
         category=category,
@@ -122,9 +127,15 @@ def create_blog(request: schemas.BlogRequest, db: Session, user_id: int):
     try:
         db.commit()
         db.refresh(new_blog)
-    except Exception:
+    except IntegrityError as exc:
         db.rollback()
-        raise
+        if "slug" in str(exc).lower():
+            new_blog.slug = unique_slug(db, models.Blog, title)
+            db.add(new_blog)
+            db.commit()
+            db.refresh(new_blog)
+        else:
+            raise
     return new_blog
 
 
@@ -183,6 +194,7 @@ def update_blog(blog_id: int, request: schemas.BlogUpdateRequest, db: Session, u
     update_data = request.model_dump(exclude_unset=True)
 
     if "title" in update_data and update_data["title"] != blog.title:
+        update_data["title"] = sanitize_text(update_data["title"], max_length=250)
         blog.slug = unique_slug(db, models.Blog, update_data["title"])
 
     if "category" in update_data:
@@ -191,11 +203,26 @@ def update_blog(blog_id: int, request: schemas.BlogUpdateRequest, db: Session, u
     if "tags" in update_data:
         blog.tags = get_or_create_tags(db, update_data.pop("tags") or [])
 
+    if "content" in update_data:
+        update_data["content"] = sanitize_text(update_data["content"], max_length=20000)
+
+    if "cover_image_url" in update_data and update_data["cover_image_url"] is not None:
+        update_data["cover_image_url"] = sanitize_text(update_data["cover_image_url"], max_length=1024)
+
     for key, value in update_data.items():
         setattr(blog, key, value)
 
-    db.commit()
-    db.refresh(blog)
+    try:
+        db.commit()
+        db.refresh(blog)
+    except IntegrityError as exc:
+        db.rollback()
+        if "slug" in str(exc).lower() and "title" in update_data:
+            blog.slug = unique_slug(db, models.Blog, update_data["title"])
+            db.commit()
+            db.refresh(blog)
+        else:
+            raise
     return blog
 
 
@@ -222,11 +249,15 @@ def add_comment(blog_id: int, request: schemas.CommentRequest, db: Session, user
         blog_id=blog_id,
         user_id=user_id,
         parent_id=request.parent_id,
-        content=request.content,
+        content=sanitize_text(request.content, max_length=2000),
     )
     db.add(comment)
-    db.commit()
-    db.refresh(comment)
+    try:
+        db.commit()
+        db.refresh(comment)
+    except Exception:
+        db.rollback()
+        raise
     return comment
 
 
@@ -246,7 +277,11 @@ def toggle_like(blog_id: int, db: Session, user_id: int):
         return schemas.InteractionResponse(message="Like removed", active=False)
 
     db.add(models.Like(blog_id=blog_id, user_id=user_id))
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return schemas.InteractionResponse(message="Post liked", active=True)
 
 
@@ -264,7 +299,11 @@ def toggle_bookmark(blog_id: int, db: Session, user_id: int):
         return schemas.InteractionResponse(message="Bookmark removed", active=False)
 
     db.add(models.Bookmark(blog_id=blog_id, user_id=user_id))
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return schemas.InteractionResponse(message="Post bookmarked", active=True)
 
 
@@ -277,7 +316,11 @@ def share_blog(blog_id: int, db: Session):
     """Handles share blog logic."""
     blog = get_blog_by_id(blog_id, db, increment_view=False)
     blog.share_count = (blog.share_count or 0) + 1
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return schemas.InteractionResponse(message="Share counted", active=True)
 
 
@@ -287,11 +330,15 @@ def report_blog(blog_id: int, request: schemas.ReportRequest, db: Session, user_
     report = models.Report(
         blog_id=blog_id,
         reporter_id=user_id,
-        reason=request.reason,
-        details=request.details,
+        reason=sanitize_text(request.reason, max_length=150),
+        details=sanitize_text(request.details, max_length=2000) if request.details is not None else None,
     )
     db.add(report)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return schemas.InteractionResponse(message="Report submitted", active=True)
 
 

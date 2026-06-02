@@ -3,7 +3,7 @@ SQLAlchemy database models for the application.
 """
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Integer, String, Table, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -65,6 +65,9 @@ class Blog(Base):
 class User(Base):
     """Represents a registered user in the system."""
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint("role IN ('reader', 'author', 'admin')", name="chk_user_role"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
@@ -150,7 +153,8 @@ class Comment(Base):
 
     blog = relationship("Blog", back_populates="comments")
     user = relationship("User", back_populates="comments")
-    replies = relationship("Comment", cascade="all, delete-orphan")
+    parent = relationship("Comment", remote_side=[id], back_populates="replies")
+    replies = relationship("Comment", back_populates="parent", cascade="all, delete-orphan")
 
 
 class Like(Base):

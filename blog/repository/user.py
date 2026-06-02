@@ -5,8 +5,11 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from .. import hashing, models, schemas
+from ..utils import sanitize_text
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
+import secrets
+import string
 
 
 def create_user(request: schemas.CreateUserRequest, db: Session):
@@ -19,7 +22,7 @@ def create_user(request: schemas.CreateUserRequest, db: Session):
         )
 
     new_user = models.User(
-        name=request.name,
+        name=sanitize_text(request.name, max_length=100),
         email=request.email,
         password=hashing.PasswordHasher.hash_password(request.password),
         role="author"
@@ -54,6 +57,12 @@ def update_user_profile(user_id: int, request: schemas.UpdateUserRequest, db: Se
     update_data = request.model_dump(exclude_unset=True)
 
     for key, value in update_data.items():
+        if key == "name":
+            value = sanitize_text(value, max_length=100)
+        elif key == "bio":
+            value = sanitize_text(value, max_length=500)
+        elif key == "avatar_url" and value is not None:
+            value = sanitize_text(value, max_length=2048)
         setattr(user, key, value)
 
     db.commit()
@@ -145,11 +154,20 @@ def _hash_code(value: str) -> str:
     return sha256(value.encode("utf-8")).hexdigest()
 
 
+def _generate_otp(length: int = 8) -> str:
+    alphabet = string.ascii_uppercase + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
 def request_email_otp(email: str, db: Session, ttl_minutes: int = 10):
     """Create and persist an OTP for the given email. Returns the raw code (caller should send email)."""
-    code = f"{sha256((email + str(datetime.now(timezone.utc))).encode('utf-8')).hexdigest()[:6]}"
+    normalized_email = email.strip().lower()
+    if not normalized_email:
+        raise ValueError("Email must be provided")
+
+    code = _generate_otp(8)
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes)
-    otp = models.EmailOTP(email=email, code_hash=_hash_code(code), expires_at=expires_at)
+    otp = models.EmailOTP(email=normalized_email, code_hash=_hash_code(code), expires_at=expires_at)
     db.add(otp)
     db.commit()
     db.refresh(otp)
@@ -158,11 +176,12 @@ def request_email_otp(email: str, db: Session, ttl_minutes: int = 10):
 
 def verify_email_otp(email: str, code: str, db: Session):
     """Verify an OTP for the given email. Returns True if valid and marks it used."""
+    normalized_email = email.strip().lower()
     hashed = _hash_code(code)
     now = datetime.now(timezone.utc)
     otp = (
         db.query(models.EmailOTP)
-        .filter(models.EmailOTP.email == email, models.EmailOTP.used == False, models.EmailOTP.expires_at > now)
+        .filter(models.EmailOTP.email == normalized_email, models.EmailOTP.used == False, models.EmailOTP.expires_at > now)
         .order_by(models.EmailOTP.created_at.desc())
         .first()
     )
@@ -177,4 +196,5 @@ def verify_email_otp(email: str, code: str, db: Session):
 
 def is_email_verified(email: str, db: Session):
     """Return True if there exists a used OTP record for the email (verification completed)."""
-    return db.query(models.EmailOTP).filter(models.EmailOTP.email == email, models.EmailOTP.used == True).count() > 0
+    normalized_email = email.strip().lower()
+    return db.query(models.EmailOTP).filter(models.EmailOTP.email == normalized_email, models.EmailOTP.used == True).count() > 0
